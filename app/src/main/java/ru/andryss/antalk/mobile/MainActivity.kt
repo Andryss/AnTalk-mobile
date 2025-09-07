@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import ru.andryss.antalk.mobile.page.main.MainPage
 import ru.andryss.antalk.mobile.theme.AnTalkTheme
 
+const val TAG = "trousseau-mobile"
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

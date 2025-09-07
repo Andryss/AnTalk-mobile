@@ -42,6 +42,8 @@ android {
 dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.squareup.okhttp3.okhttp)
+    implementation(libs.fasterxml.jackson.kotlin)
+    implementation(libs.fasterxml.jackson.datatype.jsr310)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

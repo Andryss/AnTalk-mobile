@@ -1,0 +1,112 @@
+package ru.andryss.antalk.mobile.client
+
+import android.util.Log
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Response
+import okhttp3.ResponseBody
+import ru.andryss.antalk.mobile.TAG
+import java.io.IOException
+import java.util.Random
+
+const val IO_EXCEPTION_ERROR_MESSAGE = "Произошла непредвиденная ошибка, повторите попытку позже"
+const val RESPONSE_PARSE_ERROR_MESSAGE = "Произошла ошибка чтения, свяжитесь с поддержкой"
+const val ERROR_RESPONSE_MESSAGE_TEMPLATE = "%s (код ошибки: %s)"
+
+data class ErrorObject(
+    val code: Int,
+    val message: String,
+    val humanMessage: String,
+)
+
+val mapper = jacksonObjectMapper().apply {
+    registerModule(JavaTimeModule())
+}
+
+val callbackScope = CoroutineScope(Dispatchers.Main)
+
+inline fun <reified T> callbackObj(
+    crossinline onSuccess: (result: T) -> Unit,
+    crossinline onError: (error: ErrorObject) -> Unit,
+) = commonCallbackObj(
+    onSuccess = { response ->
+        val result = mapper.readValue<T>(response.bytes())
+        Log.i(TAG, "Got response $result")
+        callbackScope.launch {
+            uxDelay()
+            onSuccess(result)
+        }
+    },
+    onError = onError
+)
+
+inline fun noResponseCallbackObj(
+    crossinline onSuccess: () -> Unit,
+    crossinline onError: (error: ErrorObject) -> Unit
+) = commonCallbackObj(
+    onSuccess = {
+        Log.i(TAG, "Got empty response")
+        callbackScope.launch {
+            uxDelay()
+            onSuccess()
+        }
+    },
+    onError = onError
+)
+
+suspend fun uxDelay() =
+    delay((800 + 200 * Random().nextGaussian()).toLong())
+
+inline fun commonCallbackObj(
+    crossinline onSuccess: (response: ResponseBody) -> Unit,
+    crossinline onError: (error: ErrorObject) -> Unit,
+) = object : Callback {
+    override fun onFailure(call: Call, e: IOException) {
+        Log.e(TAG, "Error when sending request", e)
+        callbackScope.launch {
+            onError(
+                ErrorObject(
+                    code = 1,
+                    message = "io.error",
+                    humanMessage = IO_EXCEPTION_ERROR_MESSAGE
+                )
+            )
+        }
+    }
+
+    override fun onResponse(call: Call, response: Response) {
+        response.body?.use {
+            if (response.code == 200) {
+                onSuccess(it)
+            } else {
+                try {
+                    val error = mapper.readValue<ErrorObject>(it.bytes())
+                    Log.i(TAG, "Got error object response $error")
+                    callbackScope.launch {
+                        onError(error)
+                    }
+                } catch (e: Exception) {
+                    callbackScope.launch {
+                        onError(
+                            ErrorObject(
+                                code = 1,
+                                message = "response.invalid.body.error",
+                                humanMessage = RESPONSE_PARSE_ERROR_MESSAGE
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun formatError(error: ErrorObject) =
+    ERROR_RESPONSE_MESSAGE_TEMPLATE.format(error.humanMessage, error.code)
