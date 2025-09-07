@@ -4,10 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import ru.andryss.antalk.mobile.page.main.MainPage
+import ru.andryss.antalk.mobile.page.auth.MainAuthPage
 import ru.andryss.antalk.mobile.theme.AnTalkTheme
 
-class MainActivity : ComponentActivity() {
+class AuthActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AnTalkTheme {
-                MainPage(state = appState)
+                MainAuthPage(state = appState)
             }
         }
     }
